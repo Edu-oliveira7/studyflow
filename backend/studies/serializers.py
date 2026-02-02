@@ -9,9 +9,15 @@ class SubjectSerializer(serializers.ModelSerializer):
 
 
 class StudySessionSerializer(serializers.ModelSerializer):
+    subject_name = serializers.CharField(
+        source="subject.name",
+        read_only=True
+    )
+
     class Meta:
         model = StudySession
         fields = "__all__"
+
 
 
 class StudyPlanSerializer(serializers.ModelSerializer):
