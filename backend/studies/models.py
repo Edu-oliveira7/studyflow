@@ -1,7 +1,13 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class StudyPlan(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="study_plans"
+    )
     title = models.CharField(max_length=100)
     daily_time = models.PositiveIntegerField(
         help_text="Minutos disponíveis por dia"
