@@ -69,8 +69,8 @@ class StudySession(models.Model):
     day_of_week = models.PositiveSmallIntegerField(
         help_text="0 = Segunda | 6 = Domingo"
     )
-    duration = models.PositiveIntegerField(
-        help_text="Minutos"
+    duration = models.FloatField(
+        help_text="Minutos (pode ser fracionado)"
     )
     question_list = models.TextField(
         blank=True,

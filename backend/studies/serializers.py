@@ -23,10 +23,11 @@ class StudySessionSerializer(serializers.ModelSerializer):
         source="subject.name",
         read_only=True
     )
-    duration_minutes = serializers.IntegerField(
+    duration_minutes = serializers.FloatField(
         source="duration",
         read_only=True
     )
+    
 
     class Meta:
         model = StudySession
@@ -78,9 +79,40 @@ class CreateStudyPlanSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
-        # Se o usuário já tem um plano, atualiza. Senão, cria um novo
+        # Atualiza ou cria o StudyPlan do usuário
         plan, created = StudyPlan.objects.update_or_create(
             user=user,
-            defaults=validated_data
+            defaults={k: v for k, v in validated_data.items() if k in ['subjects', 'priority', 'difficulty', 'daily_time', 'study_days', 'subject_difficulties']}
         )
+
+        # Sincroniza objetos Subject com base em `subject_difficulties` ou `subjects`
+        subjects_input = validated_data.get('subject_difficulties') or validated_data.get('subjects') or []
+
+        # Normaliza para lista de dicts: {name, difficulty}
+        normalized = []
+        for s in subjects_input:
+            if isinstance(s, dict):
+                name = s.get('name')
+                difficulty = int(s.get('difficulty', 3))
+            else:
+                name = str(s)
+                difficulty = 3
+            if name:
+                normalized.append({'name': name, 'difficulty': difficulty})
+
+        # Atualiza/cria subjects e remove não presentes
+        desired_names = [s['name'] for s in normalized]
+
+        # Update or create each subject
+        for s in normalized:
+            Subject.objects.update_or_create(
+                plan=plan,
+                name=s['name'],
+                defaults={'priority': s.get('difficulty', 3)}
+            )
+
+        # Remove subjects that the user deleted
+        if desired_names:
+            Subject.objects.filter(plan=plan).exclude(name__in=desired_names).delete()
+
         return plan

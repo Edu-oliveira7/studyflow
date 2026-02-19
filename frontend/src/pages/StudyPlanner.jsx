@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Footer from '../components/Footer';
 
 export default function StudyPlanner() {
@@ -14,6 +14,56 @@ export default function StudyPlanner() {
     dailyTime: 2,
     selectedDays: [true, true, true, true, true, false, false],
   });
+
+  const location = useLocation();
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const edit = params.get('edit');
+    if (edit === 'true') {
+      setIsEditMode(true);
+      setLoadingPlan(true);
+      (async () => {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          setLoadingPlan(false);
+          return;
+        }
+        try {
+          const res = await fetch('http://localhost:8000/api/study-plans/my-plan/', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            alert('Não foi possível carregar o plano atual.');
+            setLoadingPlan(false);
+            return;
+          }
+          const data = await res.json();
+          const subjects = (data.subjects || []).map(s => (typeof s === 'string' ? { name: s, difficulty: 3 } : s));
+          const finalSubjects = (data.subject_difficulties && data.subject_difficulties.length) ? data.subject_difficulties : subjects;
+          const selectedDays = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'].map(d => (data.study_days || []).includes(d));
+
+          setFormData(prev => ({
+            ...prev,
+            subjects: finalSubjects,
+            currentSubject: '',
+            currentDifficulty: 3,
+            priority: data.priority || prev.priority || 3,
+            dailyTime: data.daily_time || prev.dailyTime || 2,
+            selectedDays,
+          }));
+          setStep(1);
+        } catch (err) {
+          console.error('Erro ao carregar plano existente', err);
+          alert('Erro ao carregar o plano. Veja o console.');
+        } finally {
+          setLoadingPlan(false);
+        }
+      })();
+    }
+  }, [location.search]);
 
   const days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
   const difficultyLabels = ['Muito Fácil', 'Fácil', 'Médio', 'Difícil', 'Muito Difícil'];
@@ -74,8 +124,8 @@ export default function StudyPlanner() {
 
     const payload = {
       subjects: formData.subjects.map(s => s.name),
-      priority: formData.subjects.reduce((acc, s) => acc + s.difficulty, 0) / formData.subjects.length,
-      difficulty: Math.max(...formData.subjects.map(s => s.difficulty)),
+      priority: formData.priority || (formData.subjects.length ? (formData.subjects.reduce((acc, s) => acc + s.difficulty, 0) / formData.subjects.length) : 3),
+      difficulty: formData.subjects.length ? Math.max(...formData.subjects.map(s => s.difficulty)) : formData.difficulty || 3,
       daily_time: formData.dailyTime,
       study_days: selectedDayNames,
       subject_difficulties: formData.subjects,
@@ -98,7 +148,7 @@ export default function StudyPlanner() {
       const data = await response.json();
 
       if (response.ok) {
-        navigate('/schedule');
+        navigate('/dashboard');
       } else {
         console.log('Erro no servidor:', data);
         
@@ -177,7 +227,7 @@ export default function StudyPlanner() {
 
             <div className="space-y-4">
               
-              <div className="space-y-3 bg-[#1a1a1a] p-6 rounded-xl border border-[#C0F53D]/20">
+              <div className="space-y-3 p-3 rounded-md">
                 <input
                   type="text"
                   value={formData.currentSubject}
@@ -221,18 +271,18 @@ export default function StudyPlanner() {
                 {formData.subjects.map((subject, index) => (
                   <div
                     key={index}
-                    className="bg-[#1a1a1a] p-4 rounded-lg border border-[#C0F53D]/30 hover:border-[#C0F53D]/60 transition-colors"
+                    className="p-2 rounded-md"
                   >
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="text-white font-semibold text-lg">{subject.name}</h4>
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="text-white font-semibold text-base">{subject.name}</h4>
                       <button
                         onClick={() => removeSubject(index)}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/20 w-6 h-6 rounded flex items-center justify-center transition-all"
+                        className="text-red-400 w-6 h-6 rounded flex items-center justify-center transition-colors"
                       >
                         ✕
                       </button>
                     </div>
-                    
+
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((num) => (
                         <button
@@ -240,8 +290,8 @@ export default function StudyPlanner() {
                           onClick={() => updateSubjectDifficulty(index, num)}
                           className={`flex-1 py-2 text-xs rounded transition-all ${
                             subject.difficulty === num
-                              ? 'bg-[#C0F53D] text-black font-bold'
-                              : 'bg-[#0B0F0A] text-white/60 border border-gray-600 hover:border-[#C0F53D]'
+                              ? 'bg-[#C0F53D] text-black font-semibold'
+                              : 'bg-transparent text-white/60 border border-gray-700'
                           }`}
                         >
                           {difficultyLabels[num - 1]}
@@ -381,6 +431,14 @@ export default function StudyPlanner() {
 
         {/* Navigation Buttons */}
         <div className="flex gap-4 mt-12">
+          {isEditMode && (
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="py-4 px-4 bg-[#2a2a2a] text-white font-bold rounded-lg border border-gray-600 hover:border-[#C0F53D] hover:bg-[#C0F53D]/10 transition-all"
+            >
+              Cancelar edição
+            </button>
+          )}
           {step > 1 && (
             <button
               onClick={handlePrevious}
@@ -403,7 +461,7 @@ export default function StudyPlanner() {
               disabled={loading}
               className="flex-1 py-4 bg-[#C0F53D] text-black font-bold rounded-lg hover:bg-[#a8d629] transition-all shadow-lg shadow-[#C0F53D]/30 hover:shadow-[#C0F53D]/50 disabled:opacity-50"
             >
-              {loading ? 'Criando plano...' : 'Criar Plano de Estudos'}
+              {loading ? (isEditMode ? 'Salvando...' : 'Criando plano...') : (isEditMode ? 'Salvar alterações' : 'Criar Plano de Estudos')}
             </button>
           )}
         </div>

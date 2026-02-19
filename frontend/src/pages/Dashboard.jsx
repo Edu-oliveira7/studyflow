@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import TodayView from '../components/TodayView';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -16,6 +17,18 @@ export default function Dashboard() {
     fetchStudyPlan();
     fetchDailyProgress();
   }, []);
+
+  // Scroll to today view when navigated with hash #today
+  const location = useLocation();
+  useEffect(() => {
+    if (location.hash === '#today') {
+      // wait until content loads
+      setTimeout(() => {
+        const el = document.getElementById('today');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
+  }, [location, studyPlan]);
 
   const fetchStudyPlan = async () => {
     const token = localStorage.getItem('access_token');
@@ -132,10 +145,8 @@ export default function Dashboard() {
   }
 
   const todayDate = getTodayDate();
-  const todaySessions = studyPlan.sessions.filter(s => {
-    const dayIndex = new Date().getDay();
-    return s.day_of_week === (dayIndex === 0 ? 6 : dayIndex - 1);
-  });
+  const todayIndex = (new Date().getDay() + 6) % 7; // 0 = Segunda, ..., 6 = Domingo
+  const todaySessions = studyPlan.sessions.filter(s => s.day_of_week === todayIndex);
 
   // Organize subjects with their sessions
   const subjectsWithSessions = (studyPlan.subjects || []).map(subject => {
@@ -159,13 +170,31 @@ export default function Dashboard() {
     <div className="w-full min-h-screen bg-gradient-to-br from-[#0B0F0A] to-[#1a1a1a] pt-24 pb-12 flex flex-col">
       <Navbar />
       <div className="flex-1 max-w-7xl mx-auto px-6 w-full">
-        {/* Header */}
-        <div className="mb-12">
+        {/* Cabeçalho */}
+        <div className="mb-12 text-center">
           <h1 className="text-5xl font-bold text-white mb-2">Dashboard de Estudos</h1>
           <p className="text-white/60">Organize, acompanhe e alcance seus objetivos</p>
+          {studyPlan && (
+            <div className="mt-4 inline-flex items-center gap-3 bg-[#C0F53D]/10 px-4 py-2 rounded-lg border border-[#C0F53D]/20 mx-auto">
+              <span className="text-[#C0F53D] font-semibold">{studyPlan.name}</span>
+              <span className="text-white/60 text-sm">Criado em {new Date(studyPlan.created_at).toLocaleDateString('pt-BR')}</span>
+            </div>
+          )}
+
+          {studyPlan && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => navigate('/study-planner?edit=true')}
+                className="px-6 py-3 bg-[#C0F53D] text-black font-semibold rounded-2xl shadow-lg hover:brightness-95 transition-all flex items-center gap-3"
+              >
+                <span className="text-lg">✏️</span>
+                <span>Editar Plano</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Stats Cards */}
+        {/* Cards de Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
           <div className="bg-[#2a2a2a] rounded-xl p-6 border border-[#C0F53D]/20">
             <p className="text-white/60 text-sm mb-2">📚 Total de Matérias</p>
@@ -185,74 +214,38 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Today's Tasks */}
-        <div className="bg-gradient-to-r from-[#C0F53D]/10 to-[#a8d629]/10 rounded-2xl p-8 border border-[#C0F53D]/30 mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-3xl font-bold text-white">Estudos de Hoje 📖</h2>
-              <p className="text-white/60 mt-1">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-            </div>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={dailyProgress[todayDate] || false}
-                onChange={() => toggleDayComplete(todayDate, new Date().getDay())}
-                className="w-6 h-6 rounded border-2 border-[#C0F53D] cursor-pointer accent-[#C0F53D]"
-              />
-              <span className="text-white font-semibold">Dia Completo!</span>
-            </label>
-          </div>
+        <TodayView studyPlan={studyPlan} dailyProgress={dailyProgress} toggleDayComplete={toggleDayComplete} />
 
-          {todaySessions.length > 0 ? (
-            <div className="space-y-3">
-              {todaySessions.sort((a, b) => a.order - b.order).map((session, idx) => (
-                <div key={idx} className="bg-[#0B0F0A]/80 p-4 rounded-lg border border-[#C0F53D]/20">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-white font-bold">{session.order}ª - {session.subject}</p>
-                      <p className="text-white/50 text-sm mt-1">⏱️ {formatTime(session.duration_minutes)}</p>
-                    </div>
-                    <span className="text-2xl">📚</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-white/60 text-lg">🎉 Parabéns! Dia de descanso!</p>
-            </div>
-          )}
-        </div>
-
-        {/* Weekly Overview - What you'll study each day */}
+        {/* Visão Semanal - O que estudar por dia */}
         <div className="bg-[#2a2a2a] rounded-2xl p-8 border border-[#C0F53D]/20 mb-12">
           <h2 className="text-2xl font-bold text-white mb-6">Cronograma da Semana 📅</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {days.map((day, idx) => {
               const daySessions = studyPlan.sessions.filter(s => s.day_of_week === idx);
               const dayDate = new Date();
-              dayDate.setDate(dayDate.getDate() + (idx - dayDate.getDay()));
+              const todayWeekIndex = (dayDate.getDay() + 6) % 7; // Monday-based index
+              const offset = idx - todayWeekIndex;
+              dayDate.setDate(dayDate.getDate() + offset);
               const formattedDate = dayDate.toISOString().split('T')[0];
               const isCompleted = dailyProgress[formattedDate];
-              
+
               return (
                 <div
                   key={idx}
-                  className={`rounded-xl p-6 border-2 transition-all cursor-pointer ${
-                    isCompleted
+                  className={`rounded-xl p-6 border-2 transition-all cursor-pointer ${isCompleted
                       ? 'bg-[#C0F53D]/20 border-[#C0F53D] shadow-lg shadow-[#C0F53D]/30'
                       : daySessions.length > 0
-                      ? 'bg-gradient-to-br from-[#C0F53D]/10 to-[#a8d629]/10 border-[#C0F53D]/40'
-                      : 'bg-[#1a1a1a] border-gray-600/30'
-                  }`}
+                        ? 'bg-gradient-to-br from-[#C0F53D]/10 to-[#a8d629]/10 border-[#C0F53D]/40'
+                        : 'bg-[#1a1a1a] border-gray-600/30'
+                    }`}
                   onClick={() => toggleDayComplete(formattedDate, idx)}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-lg font-bold text-white">{day}</h3>
                     {isCompleted && <span className="text-2xl">✅</span>}
                   </div>
-                  
+
                   {daySessions.length > 0 ? (
                     <div className="space-y-2">
                       {daySessions.sort((a, b) => a.order - b.order).map((session, sidx) => (
@@ -271,17 +264,17 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Detailed Subjects Overview */}
+        {/* Visão Detalhada de Matérias */}
         <div className="mb-12">
           <h2 className="text-3xl font-bold text-white mb-8">Suas Matérias 📚</h2>
-          
+
           <div className="space-y-6">
             {subjectsWithSessions.map((subject, idx) => (
               <div
                 key={idx}
                 className="bg-gradient-to-r from-[#2a2a2a] to-[#1a1a1a] rounded-2xl border border-[#C0F53D]/30 overflow-hidden transition-all hover:border-[#C0F53D]/60"
               >
-                {/* Subject Header */}
+                {/* Cabeçalho da Matéria */}
                 <div
                   onClick={() => setExpandedSubject(expandedSubject === idx ? null : idx)}
                   className="p-6 cursor-pointer hover:bg-[#C0F53D]/5 transition-colors"
@@ -292,14 +285,13 @@ export default function Dashboard() {
                       <div>
                         <h3 className="text-2xl font-bold text-white">{subject.name}</h3>
                         <div className="flex items-center gap-4 mt-2">
-                          {/* Difficulty Stars */}
+                          {/* Indicador de dificuldade */}
                           <div className="flex gap-1">
                             {Array.from({ length: 5 }).map((_, i) => (
                               <div
                                 key={i}
-                                className={`w-3 h-3 rounded-full ${
-                                  i < subject.difficulty ? 'bg-[#C0F53D]' : 'bg-gray-600'
-                                }`}
+                                className={`w-3 h-3 rounded-full ${i < subject.difficulty ? 'bg-[#C0F53D]' : 'bg-gray-600'
+                                  }`}
                               />
                             ))}
                           </div>
@@ -313,7 +305,7 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Quick Info */}
+                  {/* Informações rápidas */}
                   <div className="flex gap-4 items-center flex-wrap">
                     <div className="bg-[#C0F53D]/10 px-3 py-1 rounded-lg">
                       <p className="text-[#C0F53D] text-xs font-semibold">{subject.sessions.length} sessions</p>
@@ -329,11 +321,11 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Expanded Details */}
+                {/* Detalhes expandidos */}
                 {expandedSubject === idx && (
                   <div className="border-t border-[#C0F53D]/20 p-6 bg-[#0B0F0A]/50">
                     <div className="space-y-6">
-                      {/* Sessions */}
+                      {/* Sessões */}
                       <div>
                         <h4 className="text-lg font-bold text-white mb-4">📑 Sessions Agendadas</h4>
                         <div className="space-y-3">
@@ -345,8 +337,8 @@ export default function Dashboard() {
                                   <p className="text-white/50 text-sm">⏱️ {formatTime(session.duration_minutes)}</p>
                                 </div>
                               </div>
-                              
-                              {/* Study Tips */}
+
+                              {/* Dicas de estudo */}
                               {session.question_list && (
                                 <div className="mt-3 pt-3 border-t border-[#C0F53D]/10">
                                   <p className="text-[#C0F53D] text-xs font-semibold mb-2">💡 Sugestões de Estudo:</p>
@@ -360,7 +352,7 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {/* Study Days */}
+                      
                       <div>
                         <h4 className="text-lg font-bold text-white mb-4">📅 Dias de Estudo</h4>
                         <div className="flex gap-2 flex-wrap">
@@ -372,7 +364,7 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {/* Statistics */}
+                      
                       <div className="grid grid-cols-3 gap-4">
                         <div className="bg-[#2a2a2a] p-4 rounded-lg border border-[#C0F53D]/20">
                           <p className="text-white/60 text-xs mb-1">Total de Sessions</p>
@@ -393,16 +385,6 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Action Button */}
-        <div className="flex justify-center gap-4">
-          <button
-            onClick={() => navigate('/study-planner')}
-            className="px-8 py-4 bg-[#C0F53D] text-black font-bold rounded-lg hover:bg-[#a8d629] transition-all shadow-lg shadow-[#C0F53D]/30 hover:shadow-[#C0F53D]/50"
-          >
-            Editar Plano de Estudos
-          </button>
         </div>
       </div>
 

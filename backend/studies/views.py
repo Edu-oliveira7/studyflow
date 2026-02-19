@@ -69,9 +69,16 @@ class MyStudyPlanView(APIView):
                 })
             
             # Formata subjects_difficulties se existir
-            subjects = plan.subjects or []
+            # Prefer subject_difficulties; se ausente, constrói a partir de Subject objects
             if plan.subject_difficulties:
                 subjects = plan.subject_difficulties
+            else:
+                subjects = []
+                for subj in plan.subject_details.all():
+                    subjects.append({
+                        'name': subj.name,
+                        'difficulty': subj.priority or 3
+                    })
             
             # Resposta customizada
             data = {

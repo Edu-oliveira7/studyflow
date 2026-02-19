@@ -7,6 +7,8 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -77,18 +79,28 @@ export default function Register() {
               className="w-full px-4 py-2 rounded bg-[#1a1a1a] text-white border border-gray-600 focus:outline-none focus:border-[#C0F53D] transition-colors"
               placeholder="Seu nome de usuário"
               disabled={loading}
-            />
-          </div>
-          <div>
-            <label className="block text-white mb-2 text-sm font-medium">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 rounded bg-[#1a1a1a] text-white border border-gray-600 focus:outline-none focus:border-[#C0F53D] transition-colors"
-              placeholder="seu@email.com"
-              disabled={loading}
+            <div>
+              <label className="block text-white mb-2 text-sm font-medium">Senha</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-2 rounded bg-[#1a1a1a] text-white border border-gray-600 focus:outline-none focus:border-[#C0F53D] transition-colors"
+                  placeholder="Seu senha (mín. 6 caracteres)"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-white/60 hover:text-white"
+                  aria-label={showPassword ? 'Esconder senha' : 'Mostrar senha'}
+                >
+                  {showPassword ? 'Ocultar' : 'Mostrar'}
+                </button>
+              </div>
+            </div>
             />
           </div>
           <div>
@@ -105,15 +117,25 @@ export default function Register() {
           </div>
           <div>
             <label className="block text-white mb-2 text-sm font-medium">Confirmar Senha</label>
-            <input
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 rounded bg-[#1a1a1a] text-white border border-gray-600 focus:outline-none focus:border-[#C0F53D] transition-colors"
-              placeholder="Confirme sua senha"
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-2 rounded bg-[#1a1a1a] text-white border border-gray-600 focus:outline-none focus:border-[#C0F53D] transition-colors"
+                placeholder="Confirme sua senha"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-white/60 hover:text-white"
+                aria-label={showConfirmPassword ? 'Esconder confirmação' : 'Mostrar confirmação'}
+              >
+                {showConfirmPassword ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
           </div>
           <button 
             type="submit"

@@ -15,13 +15,7 @@ DAYS = [
 
 
 def generate_study_sessions(plan):
-    """
-    Gera sessões de estudo com distribuição inteligente.
-    - Máximo 2 matérias por dia
-    - Todas as matérias aparecem (proporcional à dificuldade)
-    - Matérias com maior dificuldade aparecem mais vezes
-    - Distribuição equilibrada ao longo da semana
-    """
+    """Gera sessões de estudo com distribuição proporcional à dificuldade."""
     StudySession.objects.filter(plan=plan).delete()
 
     subject_data = plan.subject_difficulties if plan.subject_difficulties else []
@@ -33,10 +27,8 @@ def generate_study_sessions(plan):
     if not subject_data:
         return
 
-    # Ordena matérias por dificuldade (descendente)
     sorted_subjects = sorted(subject_data, key=lambda x: x.get("difficulty", 3), reverse=True)
     
-    # Converte nomes de dias para índices
     day_indices = []
     for day_name in (plan.study_days or []):
         try:
@@ -51,34 +43,27 @@ def generate_study_sessions(plan):
     num_days = len(day_indices)
     num_subjects = len(sorted_subjects)
 
-    # Calcula dificuldade total
     total_difficulty = sum(int(s.get("difficulty", 3)) for s in sorted_subjects)
     if total_difficulty == 0:
         total_difficulty = num_subjects
 
-    # Calcula quantas vezes cada matéria aparece baseado em dificuldade
-    # Garante que cada matéria apareça pelo menos uma vez
     subject_frequencies = []
     total_appearances = 0
     for subject in sorted_subjects:
         difficulty = int(subject.get("difficulty", 3))
-        # Proporcional à dificuldade com fator 0.5 para caber nos slots disponíveis
         frequency = max(1, round((difficulty / 5.0) * num_days * 0.5))
         subject_frequencies.append(frequency)
         total_appearances += frequency
 
-    # Cria lista de todas as aparições (scheduling pool)
     scheduling_pool = []
     for subj_idx, frequency in enumerate(subject_frequencies):
         for _ in range(frequency):
             scheduling_pool.append(subj_idx)
 
-    # Distribui as matérias pelos dias de forma equilibrada
     import random
-    random.seed(42)  # seed fixo para consistência
+    random.seed(42)
     random.shuffle(scheduling_pool)
 
-    # Preenche os dias com máximo 2 matérias cada
     daily_schedule = {day: [] for day in day_indices}
     pool_idx = 0
 
@@ -93,40 +78,60 @@ def generate_study_sessions(plan):
 
     # Cria as sessions
     for day_index in day_indices:
-        sessions_today = sorted(daily_schedule.get(day_index, []))  # Ordena por índice (dificuldade)
-        
-        for order, subj_idx in enumerate(sessions_today, 1):
-            subject_data_item = sorted_subjects[subj_idx]
+        sessions_today = sorted(daily_schedule.get(day_index, []))  # lista de índices para sorted_subjects
+
+        if not sessions_today:
+            continue
+
+        daily_minutes = int(plan.daily_time * 60)
+
+        local_difficulties = [int(sorted_subjects[subj_idx].get('difficulty', 3)) for subj_idx in sessions_today]
+        local_total = sum(local_difficulties) or len(local_difficulties)
+
+        assigned = []
+        min_per_session = 10
+        for difficulty in local_difficulties:
+            minutes = max(min_per_session, int((difficulty / local_total) * daily_minutes))
+            assigned.append(minutes)
+
+        # Ajusta diferenças por arredondamento para que a soma seja exatamente daily_minutes
+        current_sum = sum(assigned)
+        diff = daily_minutes - current_sum
+
+        order_indices = sorted(range(len(assigned)), key=lambda i: -local_difficulties[i])
+
+        idx = 0
+        while diff != 0 and idx < 1000:
+            i = order_indices[idx % len(order_indices)]
+            if diff > 0:
+                assigned[i] += 1
+                diff -= 1
+            else:
+                if assigned[i] > min_per_session:
+                    assigned[i] -= 1
+                    diff += 1
+            idx += 1
+
+        # Cria objetos StudySession com as durações ajustadas
+        for order, (pool_subj_idx, duration_minutes) in enumerate(zip(sessions_today, assigned), 1):
+            subject_data_item = sorted_subjects[pool_subj_idx]
             subject_name = subject_data_item.get("name")
             difficulty = int(subject_data_item.get("difficulty", 3))
-            
-            # Calcula duração baseada em dificuldade proporcional
-            # Divide o tempo do dia entre as matérias com base na dificuldade relativa
-            num_sessions_today = len(sessions_today)
-            proportion = difficulty / total_difficulty
-            
-            # Se houver apenas 1 matéria, usa proporção
-            # Se houver 2, distribui mais equilibrado
-            if num_sessions_today == 1:
-                duration_minutes = int(plan.daily_time * 60)
-            else:
-                # Para 2 matérias: metade do tempo para cada, ajustado pela dificuldade
-                duration_minutes = max(20, int((plan.daily_time * 60) * proportion / num_sessions_today * 1.5))
-            
+
             subject_obj, _ = Subject.objects.get_or_create(
                 plan=plan,
                 name=subject_name,
                 defaults={"priority": difficulty}
             )
-            
-            # Gera sugestões de questões
+
+            # Sugestões de estudo básicas
             question_list = f"""📋 Questões sobre {subject_name}:
 1. Revise os conceitos principais
 2. Resolva 5-10 exercícios de prática
 3. Faça um resumo dos pontos-chave
 4. Tire dúvidas com recursos online
 5. Registre dificuldades para revisão"""
-            
+
             StudySession.objects.create(
                 plan=plan,
                 subject=subject_obj,
