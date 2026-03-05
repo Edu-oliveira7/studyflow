@@ -132,8 +132,10 @@ class StudySessionViewSet(ModelViewSet):
         serializer.save()
 
 class DashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        data = get_dashboard_data()
+        data = get_dashboard_data(request.user)
         return Response(data, status=status.HTTP_200_OK)
 
 

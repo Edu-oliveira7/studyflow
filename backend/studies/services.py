@@ -142,24 +142,27 @@ def generate_study_sessions(plan):
             )
 
 
-def get_dashboard_data():
+def get_dashboard_data(user):
     today_index = datetime.today().weekday()
+    user_plans = StudyPlan.objects.filter(user=user)
+    user_subjects = Subject.objects.filter(plan__user=user)
+    user_sessions = StudySession.objects.filter(plan__user=user)
 
     return {
         "stats": {
-            "total_plans": StudyPlan.objects.count(),
-            "total_subjects": Subject.objects.count(),
-            "total_sessions": StudySession.objects.count(),
+            "total_plans": user_plans.count(),
+            "total_subjects": user_subjects.count(),
+            "total_sessions": user_sessions.count(),
         },
 
         "today": {
             "day_index": today_index,
             "day_name": DAYS[today_index] if today_index < 7 else None,
             "sessions": list(
-                StudySession.objects.filter(day_of_week=today_index).values(
+                user_sessions.filter(day_of_week=today_index).values(
                     "id",
                     "duration",
-                    plan_title=models.F("plan__title"),
+                    plan_id=models.F("plan__id"),
                     subject_name=models.F("subject__name"),
                 )
             )
@@ -170,10 +173,10 @@ def get_dashboard_data():
                 "day_index": day,
                 "day_name": DAYS[day],
                 "sessions": list(
-                    StudySession.objects.filter(day_of_week=day).values(
+                    user_sessions.filter(day_of_week=day).values(
                         "id",
                         "duration",
-                        plan_title=models.F("plan__title"),
+                        plan_id=models.F("plan__id"),
                         subject_name=models.F("subject__name"),
                     )
                 )

@@ -5,10 +5,12 @@ import Register from './pages/Register';
 import Home from './pages/Home';
 import StudyPlanner from './pages/StudyPlanner';
 import Dashboard from './pages/Dashboard';
+import { apiUrl } from './lib/api';
+import { clearAuthSession, getAccessToken } from './lib/auth';
 
 // Protetor de rota para usuários autenticados
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('access_token');
+  const token = getAccessToken();
   return token ? children : <Navigate to="/login" />;
 };
 
@@ -17,7 +19,7 @@ function App() {
   const [isAuth, setIsAuth] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = getAccessToken();
     if (!token) {
       setIsAuth(false);
       setChecking(false);
@@ -26,7 +28,7 @@ function App() {
 
     (async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/token/verify/', {
+        const res = await fetch(apiUrl('/api/token/verify/'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),
@@ -35,10 +37,7 @@ function App() {
         if (res.ok) {
           setIsAuth(true);
         } else {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user_id');
-          localStorage.removeItem('user_email');
-          localStorage.removeItem('username');
+          clearAuthSession();
           setIsAuth(false);
         }
       } catch (err) {

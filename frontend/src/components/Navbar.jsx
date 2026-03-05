@@ -1,18 +1,21 @@
 import { Link, useNavigate } from "react-router-dom";
 import Button from "./Button";
 import { useState, useEffect, useRef } from "react";
+import { apiUrl } from "../lib/api";
+import { clearAuthSession, getAccessToken, getUsername } from "../lib/auth";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [hasStudyPlan, setHasStudyPlan] = useState(false);
   const [username, setUsername] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const menuRef = useRef(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    const storedUsername = localStorage.getItem("username");
+    const token = getAccessToken();
+    const storedUsername = getUsername();
     
     if (token && storedUsername) {
       setIsLoggedIn(true);
@@ -22,16 +25,20 @@ export default function Navbar() {
     const fetchPending = async () => {
       if (!token) return;
       try {
-        const res = await fetch('http://localhost:8000/api/study-plans/my-plan/', {
+        const res = await fetch(apiUrl('/api/study-plans/my-plan/'), {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          setHasStudyPlan(false);
+          return;
+        }
+        setHasStudyPlan(true);
         const data = await res.json();
         const dayIdx = (new Date().getDay() === 0) ? 6 : (new Date().getDay() - 1);
         const count = (data.sessions || []).filter(s => s.day_of_week === dayIdx).length;
         setPendingCount(count);
       } catch (e) {
-        // ignore
+        setHasStudyPlan(false);
       }
     };
     fetchPending();
@@ -54,9 +61,9 @@ export default function Navbar() {
   }, [showMenu]);
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("username");
+    clearAuthSession();
     setIsLoggedIn(false);
+    setHasStudyPlan(false);
     setUsername("");
     setShowMenu(false);
     navigate("/login");
@@ -73,11 +80,13 @@ export default function Navbar() {
       </Link>
       
       <div className="flex items-center gap-6 relative">
-        <Link to="/dashboard#today" className="hidden sm:inline-block mr-2">
-          <button className="px-3 py-2 rounded-md bg-[#C0F53D]/10 border border-[#C0F53D]/20 text-white hover:bg-[#C0F53D]/20 transition-all">
-            Hoje
-          </button>
-        </Link>
+        {isLoggedIn && hasStudyPlan && (
+          <Link to="/dashboard#today" className="hidden sm:inline-block mr-2">
+            <button className="px-3 py-2 rounded-md bg-[#C0F53D]/10 border border-[#C0F53D]/20 text-white hover:bg-[#C0F53D]/20 transition-all">
+              Hoje
+            </button>
+          </Link>
+        )}
         {isLoggedIn ? (
           <div ref={menuRef}>
             <button

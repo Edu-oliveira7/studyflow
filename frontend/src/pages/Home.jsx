@@ -23,12 +23,12 @@ export default function Home() {
                     </div>
 
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-tight font-['Playfair_Display'] mb-8">
-                        Vença o <span className="text-white/40 underline decoration-[#C0F53D]/30">caos</span>. <br />
+                        Vença a <span className="text-white/40 underline decoration-[#C0F53D]/30">Procastinação</span>. <br />
                         <span className="block text-[#C0F53D] mt-4 italic font-serif">Garanta sua aprovação.</span>
                     </h1>
 
                     <p className="mt-8 max-w-3xl mx-auto text-xl text-white/60 leading-relaxed mb-12">
-                        O <strong>StudyFlow</strong> é a plataforma inteligente que organiza sua rotina de estudos de forma automática, permitindo que você foque no que realmente importa: aprender e se desenvolver.
+                        O <strong>StudyFlow</strong> é uma plataforma inteligente que organiza sua rotina de estudos de forma automática, permitindo que você foque no que realmente importa: aprender e se desenvolver.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">

@@ -105,4 +105,4 @@ class DailyProgress(models.Model):
         ordering = ['date']
 
     def __str__(self):
-        return f"{self.subject.name} - {self.duration}min"
+        return f"{self.plan.user.username} - {self.date} - {'ok' if self.completed else 'pending'}"

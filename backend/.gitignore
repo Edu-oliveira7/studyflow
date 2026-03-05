@@ -5,7 +5,6 @@ __pycache__/
 
 # Virtualenv
 venv/
-.env
 
 # Django
 staticfiles/

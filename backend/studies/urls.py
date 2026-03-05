@@ -5,7 +5,8 @@ from .views import (
     SubjectViewSet,
     CreateStudyPlanView,
     MyStudyPlanView,
-    DailyProgressView
+    DailyProgressView,
+    DashboardView,
 )
 
 router = DefaultRouter()
@@ -16,5 +17,6 @@ urlpatterns = [
     path("", include(router.urls)),
     path("study-plans/", CreateStudyPlanView.as_view(), name="create-study-plan"),
     path("study-plans/my-plan/", MyStudyPlanView.as_view(), name="my-study-plan"),
+    path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("daily-progress/", DailyProgressView.as_view(), name="daily-progress"),
 ]

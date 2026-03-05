@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Footer from '../components/Footer';
+import { apiUrl } from '../lib/api';
+import { getAccessToken } from '../lib/auth';
 
 export default function StudyPlanner() {
   const navigate = useNavigate();
@@ -26,13 +28,13 @@ export default function StudyPlanner() {
       setIsEditMode(true);
       setLoadingPlan(true);
       (async () => {
-        const token = localStorage.getItem('access_token');
+        const token = getAccessToken();
         if (!token) {
           setLoadingPlan(false);
           return;
         }
         try {
-          const res = await fetch('http://localhost:8000/api/study-plans/my-plan/', {
+          const res = await fetch(apiUrl('/api/study-plans/my-plan/'), {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (!res.ok) {
@@ -62,8 +64,25 @@ export default function StudyPlanner() {
           setLoadingPlan(false);
         }
       })();
+    } else {
+      (async () => {
+        const token = getAccessToken();
+        if (!token) return;
+
+        try {
+          const res = await fetch(apiUrl('/api/study-plans/my-plan/'), {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (res.ok) {
+            navigate('/dashboard', { replace: true });
+          }
+        } catch (err) {
+          console.error('Erro ao verificar plano existente', err);
+        }
+      })();
     }
-  }, [location.search]);
+  }, [location.search, navigate]);
 
   const days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
   const difficultyLabels = ['Muito Fácil', 'Fácil', 'Médio', 'Difícil', 'Muito Difícil'];
@@ -115,7 +134,7 @@ export default function StudyPlanner() {
 
   const handleSubmit = async () => {
     const selectedDayNames = days.filter((_, i) => formData.selectedDays[i]);
-    const token = localStorage.getItem('access_token');
+    const token = getAccessToken();
 
     if (!selectedDayNames.length) {
       alert('Selecione pelo menos um dia de estudo');
@@ -132,11 +151,10 @@ export default function StudyPlanner() {
     };
 
     console.log('Enviando payload:', payload);
-    console.log('Token:', token);
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/study-plans/', {
+      const response = await fetch(apiUrl('/api/study-plans/'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -186,7 +204,7 @@ export default function StudyPlanner() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-[#0B0F0A] to-[#1a1a1a] pt-24 pb-12">
+    <div className="w-full min-h-screen bg-gradient-to-br from-[#0B0F0A] to-[#1a1a1a] pt-24">
       <div className="max-w-3xl mx-auto px-6">
         
         <div className="mb-12">

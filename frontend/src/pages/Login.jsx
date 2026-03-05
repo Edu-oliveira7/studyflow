@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Footer from '../components/Footer';
+import { apiUrl } from '../lib/api';
+import { setAuthSession } from '../lib/auth';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -10,13 +11,30 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const navigateAfterAuth = async (token) => {
+    try {
+      const planResponse = await fetch(apiUrl('/api/study-plans/my-plan/'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (planResponse.ok) {
+        navigate('/dashboard');
+        return;
+      }
+    } catch (err) {
+      console.error('Erro ao verificar plano:', err);
+    }
+
+    navigate('/study-planner');
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/users/auth/', {
+      const response = await fetch(apiUrl('/api/users/auth/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -25,11 +43,8 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('access_token', data.access);
-        localStorage.setItem('user_id', data.user.id);
-        localStorage.setItem('user_email', data.user.email);
-        localStorage.setItem('username', data.user.username || username);
-        navigate('/study-planner');
+        setAuthSession({ access: data.access, user: data.user });
+        await navigateAfterAuth(data.access);
       } else {
         setError(data.error || 'Falha ao fazer login');
       }

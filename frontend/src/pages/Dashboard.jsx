@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TodayView from '../components/TodayView';
+import { apiUrl } from '../lib/api';
+import { getAccessToken } from '../lib/auth';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -31,9 +33,9 @@ export default function Dashboard() {
   }, [location, studyPlan]);
 
   const fetchStudyPlan = async () => {
-    const token = localStorage.getItem('access_token');
+    const token = getAccessToken();
     try {
-      const response = await fetch('http://localhost:8000/api/study-plans/my-plan/', {
+      const response = await fetch(apiUrl('/api/study-plans/my-plan/'), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
@@ -49,9 +51,9 @@ export default function Dashboard() {
   };
 
   const fetchDailyProgress = async () => {
-    const token = localStorage.getItem('access_token');
+    const token = getAccessToken();
     try {
-      const response = await fetch('http://localhost:8000/api/daily-progress/', {
+      const response = await fetch(apiUrl('/api/daily-progress/'), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
@@ -69,11 +71,11 @@ export default function Dashboard() {
   };
 
   const toggleDayComplete = async (date, dayOfWeek) => {
-    const token = localStorage.getItem('access_token');
+    const token = getAccessToken();
     const newCompleted = !dailyProgress[date];
 
     try {
-      const response = await fetch('http://localhost:8000/api/daily-progress/', {
+      const response = await fetch(apiUrl('/api/daily-progress/'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +125,7 @@ export default function Dashboard() {
 
   if (!studyPlan) {
     return (
-      <div className="w-full min-h-screen bg-gradient-to-br from-[#0B0F0A] to-[#1a1a1a] pt-24 pb-12 flex flex-col">
+      <div className="w-full min-h-screen bg-gradient-to-br from-[#0B0F0A] to-[#1a1a1a] pt-24 flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="max-w-2xl mx-auto px-6 text-center">
@@ -167,7 +169,7 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-[#0B0F0A] to-[#1a1a1a] pt-24 pb-12 flex flex-col">
+    <div className="w-full min-h-screen bg-gradient-to-br from-[#0B0F0A] to-[#1a1a1a] pt-24 flex flex-col">
       <Navbar />
       <div className="flex-1 max-w-7xl mx-auto px-6 w-full">
         {/* Cabeçalho */}

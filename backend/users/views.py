@@ -1,15 +1,19 @@
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from .serializers import MeSerializer
 
 User = get_user_model()
 
 
 class LoginOrRegisterView(APIView):
+    permission_classes = [AllowAny]
+    throttle_scope = "auth_login"
 
     def post(self, request):
         username = request.data.get("username")
@@ -41,14 +45,20 @@ class LoginOrRegisterView(APIView):
             
             # Cria novo usuário
             try:
+                validate_password(password)
                 user = User.objects.create_user(
                     username=username,
                     email=email,
                     password=password
                 )
+            except DjangoValidationError as e:
+                return Response(
+                    {"error": " ".join(e.messages)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             except Exception as e:
                 return Response(
-                    {"error": f"Erro ao criar conta: {str(e)}"},
+                    {"error": "Erro ao criar conta"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         else:
